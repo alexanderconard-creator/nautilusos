@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Bull of Broad Street — A NautilusOS Short Film</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,800;1,500&family=IBM+Plex+Mono:wght@400;600&family=Oswald:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #e8c46a;
+    --green: #3dff8a;
+    --red: #ff3b3b;
+    --ink: #07080a;
+    --paper: #f3ead7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #000; color: var(--paper); font-family: 'IBM Plex Mono', monospace; overflow: hidden; }
+
+  .theater { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 12px; }
+
+  /* 2.39:1 letterbox */
+  .screen {
+    position: relative; width: min(96vw, calc((100vh - 120px) * 2.39)); aspect-ratio: 2.39 / 1;
+    background: var(--ink); overflow: hidden; border-radius: 2px;
+    box-shadow: 0 0 120px rgba(232,196,106,.08), 0 0 0 1px #1a1a1a;
+    container-type: inline-size;
+  }
+  .stage { position: absolute; inset: 0; overflow: hidden; }
+  .stage.paused *, .stage.paused { animation-play-state: paused !important; }
+
+  /* film texture */
+  .grain, .vignette, .flicker { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
+  .vignette { background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%); }
+  .grain { opacity: .09; mix-blend-mode: overlay; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); animation: grain .4s steps(4) infinite; }
+  @keyframes grain { 0%{transform:translate(0,0)} 25%{transform:translate(-3%,2%)} 50%{transform:translate(2%,-3%)} 75%{transform:translate(-2%,-1%)} 100%{transform:translate(1%,3%)} }
+  .flicker { background: #fff; opacity: 0; animation: flick 7s infinite; }
+  @keyframes flick { 0%,96%,100%{opacity:0} 97%{opacity:.025} 98%{opacity:0} 99%{opacity:.03} }
+
+  .subs {
+    position: absolute; left: 0; right: 0; bottom: 7%; z-index: 60; text-align: center; padding: 0 10%;
+    font-family: 'Playfair Display', serif; font-size: clamp(12px, 2.1cqw, 26px); line-height: 1.35;
+    text-shadow: 0 2px 6px #000, 0 0 2px #000; transition: opacity .3s;
+  }
+  .subs .who { display: block; font-family: 'Oswald', sans-serif; font-size: .62em; letter-spacing: .25em; color: var(--gold); text-transform: uppercase; margin-bottom: 2px; }
+  .subs.narr { font-style: italic; }
+
+  .overlay-start {
+    position: absolute; inset: 0; z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw;
+    background: radial-gradient(ellipse at center, #1b1408 0%, #000 75%); cursor: pointer;
+  }
+  .overlay-start h1 { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 6cqw; color: var(--gold); letter-spacing: .02em; text-align: center; line-height: 1; }
+  .overlay-start p { font-size: 1.3cqw; letter-spacing: .4em; text-transform: uppercase; opacity: .7; }
+  .overlay-start .play { width: 7cqw; height: 7cqw; border-radius: 50%; border: 2px solid var(--gold); display: grid; place-items: center; transition: transform .2s, background .2s; }
+  .overlay-start:hover .play { transform: scale(1.08); background: rgba(232,196,106,.12); }
+  .overlay-start .play::after { content: ''; border-left: 2.2cqw solid var(--gold); border-top: 1.3cqw solid transparent; border-bottom: 1.3cqw solid transparent; margin-left: .5cqw; }
+
+  /* controls */
+  .controls { width: min(96vw, calc((100vh - 120px) * 2.39)); display: flex; align-items: center; gap: 12px; font-size: 12px; }
+  .controls button { background: none; border: 1px solid #333; color: var(--paper); font: inherit; padding: 6px 12px; cursor: pointer; border-radius: 3px; white-space: nowrap; }
+  .controls button:hover { border-color: var(--gold); color: var(--gold); }
+  .controls button.on { border-color: var(--gold); color: var(--gold); }
+  .timeline { flex: 1; display: flex; gap: 3px; height: 22px; align-items: stretch; }
+  .chap { position: relative; background: #1a1a1a; cursor: pointer; border-radius: 2px; overflow: hidden; }
+  .chap:hover { background: #262626; }
+  .chap .fill { position: absolute; inset: 0; width: 0; background: linear-gradient(90deg, #9c7b2c, var(--gold)); opacity: .85; }
+  .chap span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 9px; letter-spacing: .08em; color: #fff; mix-blend-mode: difference; white-space: nowrap; overflow: hidden; text-transform: uppercase; }
+  .clock { min-width: 82px; text-align: right; opacity: .7; }
+  .back { position: fixed; top: 12px; left: 14px; color: #777; font-size: 12px; text-decoration: none; z-index: 100; }
+  .back:hover { color: var(--gold); }
+
+  /* ---------- shared scene pieces ---------- */
+  .fill-abs { position: absolute; inset: 0; }
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .fade-in { animation: fadeIn 2s ease forwards; opacity: 0; }
+  @keyframes fadeIn { to { opacity: 1; } }
+  .fade-out-late { animation: fadeOut 1.2s ease forwards; }
+  @keyframes fadeOut { to { opacity: 0; } }
+  .caption { position: absolute; top: 7%; left: 5%; font-family: 'Oswald', sans-serif; letter-spacing: .3em; font-size: 1.3cqw; color: var(--gold); text-transform: uppercase; opacity: 0; animation: fadeIn 1.5s .5s forwards; }
+
+  /* title */
+  .title-main { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 8cqw; line-height: .95; color: var(--gold); letter-spacing: .01em;
+    background: linear-gradient(180deg, #fff3c4 0%, #e8c46a 45%, #8a6420 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    opacity: 0; transform: scale(1.15); animation: titleIn 4s 1.5s cubic-bezier(.2,.7,.2,1) forwards; }
+  @keyframes titleIn { to { opacity: 1; transform: scale(1); } }
+  .title-sub { margin-top: 1.5cqw; font-size: 1.2cqw; letter-spacing: .6em; text-transform: uppercase; opacity: 0; animation: fadeIn 2s 4s forwards; }
+  .presents { font-family: 'Oswald'; letter-spacing: .5em; font-size: 1.1cqw; opacity: 0; animation: presents 3s .2s forwards; position: absolute; top: 30%; }
+  @keyframes presents { 0%{opacity:0} 30%{opacity:.8} 70%{opacity:.8} 100%{opacity:0} }
+  .bull { position: absolute; bottom: 8%; width: 14cqw; opacity: 0; animation: fadeIn 3s 5s forwards; }
+
+  /* skyline */
+  .sky { background: linear-gradient(180deg, #0c1530 0%, #3b2a4d 45%, #d9744a 78%, #f5b65c 100%); }
+  .sun { position: absolute; width: 14cqw; height: 14cqw; border-radius: 50%; left: 60%; bottom: -14cqw; background: radial-gradient(circle, #fff1b8, #ffb347 60%, transparent 70%); animation: sunrise 14s ease-out forwards; }
+  @keyframes sunrise { to { bottom: 18%; } }
+  .city { position: absolute; left: 0; right: 0; bottom: 0; height: 70%; display: flex; align-items: flex-end; }
+  .bldg { position: relative; background: #0a0d18; margin-right: .25cqw; flex-shrink: 0; }
+  .bldg i { position: absolute; width: .45cqw; height: .6cqw; background: #ffd77a; opacity: .0; animation: win 3s infinite alternate; }
+  @keyframes win { 0%{opacity:0} 100%{opacity:.85} }
+  .water { position: absolute; bottom: 0; left: 0; right: 0; height: 12%; background: linear-gradient(180deg, #1a1530, #07060d); }
+  .train { position: absolute; bottom: 12%; left: -40%; height: 2.4cqw; width: 36%; display: flex; gap: .3cqw; animation: trainIn 9s 1s cubic-bezier(.2,.6,.3,1) forwards; }
+  .train div { flex: 1; background: #1c2133; border-top: .3cqw solid #8899bb; display: flex; gap: .4cqw; padding: .4cqw; }
+  .train div::before, .train div::after { content: ''; flex: 1; background: #ffdf9a; opacity: .7; }
+  @keyframes trainIn { to { left: 35%; } }
+
+  /* people */
+  .guy { position: absolute; width: 3cqw; height: 7cqw; }
+  .guy .h { position: absolute; top: 0; left: 50%; width: 1.7cqw; height: 1.9cqw; margin-left: -.85cqw; border-radius: 45% 45% 50% 50%; background: #e3b48c; }
+  .guy .hair { position: absolute; top: -.2cqw; left: 50%; width: 1.9cqw; height: .9cqw; margin-left: -.95cqw; border-radius: 1cqw 1cqw .2cqw .2cqw; background: #3a2414; }
+  .guy .b { position: absolute; top: 2cqw; left: 0; right: 0; bottom: 0; border-radius: 1cqw 1cqw .2cqw .2cqw; background: #1b2236; }
+  .guy .b::before { content: ''; position: absolute; left: 50%; top: 0; width: .9cqw; height: 2.2cqw; margin-left: -.45cqw; background: linear-gradient(180deg, #fff 0 25%, transparent 25%), linear-gradient(90deg, transparent 35%, #c0262c 35% 65%, transparent 65%), #fff; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+  .guy.hero .b { background: #2a2f3d; }
+  .guy.hero .hair { background: #6b4422; height: 1cqw; }
+  .guy.gold .b { background: #3a2c10; }
+  .bob { animation: bob .6s ease-in-out infinite alternate; }
+  @keyframes bob { to { transform: translateY(-.4cqw); } }
+  .shout { animation: shout .25s ease-in-out infinite alternate; }
+  @keyframes shout { from { transform: rotate(-3deg); } to { transform: rotate(3deg) translateY(-.5cqw); } }
+
+  /* trading floor */
+  .floor { background: linear-gradient(180deg, #11161d 0%, #1d2530 55%, #2b2a24 100%); }
+  .board { position: absolute; top: 5%; left: 4%; right: 4%; height: 26%; background: #050805; border: .3cqw solid #222; display: grid; grid-template-columns: repeat(6, 1fr); gap: .3cqw; padding: .6cqw; font-size: 1.2cqw; }
+  .board div { color: var(--green); display: flex; justify-content: space-between; padding: 0 .5cqw; text-shadow: 0 0 6px currentColor; }
+  .board div.dn { color: var(--red); }
+  .desks { position: absolute; left: 0; right: 0; bottom: 0; height: 52%; }
+  .desk { position: absolute; height: 3cqw; background: linear-gradient(180deg, #5b4127, #3a2817); border-radius: .2cqw; }
+  .crt { position: absolute; width: 4.2cqw; height: 3.4cqw; background: #cfc6b0; border-radius: .4cqw; padding: .35cqw; }
+  .crt::after { content: ''; position: absolute; inset: .35cqw; background: repeating-linear-gradient(180deg, #0b2a14 0 .25cqw, #0e3a1b .25cqw .5cqw); border-radius: .3cqw; box-shadow: inset 0 0 1cqw #3dff8a55; animation: crt 1.3s steps(2) infinite; }
+  @keyframes crt { 50% { filter: brightness(1.4); } }
+  .ticker { position: absolute; left: 0; right: 0; height: 3.2cqw; background: #000; border-top: 1px solid #333; border-bottom: 1px solid #333; overflow: hidden; display: flex; align-items: center; font-size: 1.6cqw; white-space: nowrap; z-index: 5; }
+  .ticker .track { display: inline-block; animation: tick 22s linear infinite; padding-left: 100%; }
+  .ticker .up { color: var(--green); } .ticker .dn { color: var(--red); }
+  @keyframes tick { to { transform: translateX(-100%); } }
+  .phone-ring { position: absolute; font-size: 1.4cqw; color: #fff; font-family: 'Oswald'; letter-spacing: .1em; animation: ring .15s infinite alternate; opacity: .8; }
+  @keyframes ring { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+
+  /* crash */
+  .crash { background: #050505; }
+  .crash svg { position: absolute; inset: 8% 6% 18% 6%; width: 88%; height: 74%; }
+  .crash .line { fill: none; stroke: var(--green); stroke-width: 3; stroke-dasharray: 3000; stroke-dashoffset: 3000; animation: draw 7s 1s ease-in forwards, turnRed 7s 1s forwards; filter: drop-shadow(0 0 6px currentColor); }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes turnRed { 0%,45% { stroke: var(--green); } 55%,100% { stroke: var(--red); } }
+  .bigdate { position: absolute; right: 6%; top: 10%; text-align: right; font-family: 'Oswald'; opacity: 0; animation: fadeIn 1s 5s forwards; }
+  .bigdate b { display: block; font-size: 6cqw; color: var(--red); font-weight: 600; line-height: 1; text-shadow: 0 0 20px #ff3b3b88; }
+  .bigdate small { font-size: 1.4cqw; letter-spacing: .3em; }
+  .redflash { position: absolute; inset: 0; background: var(--red); opacity: 0; animation: redflash .9s 5.2s 3; mix-blend-mode: screen; }
+  @keyframes redflash { 0%,100% { opacity: 0; } 20% { opacity: .35; } }
+  .shake { animation: shake .12s 5s 25; }
+  @keyframes shake { 25% { transform: translate(.4cqw,-.3cqw); } 50% { transform: translate(-.3cqw,.4cqw); } 75% { transform: translate(.3cqw,.2cqw); } }
+
+  /* strip mall */
+  .mall { background: linear-gradient(180deg, #2a3a55 0%, #7d8aa0 60%, #3b3b3b 60%, #2b2b2b 100%); }
+  .shop { position: absolute; bottom: 40%; height: 26%; background: #c8b99a; border-top: 1.2cqw solid #8a2d2d; }
+  .shop .door { position: absolute; bottom: 0; width: 22%; height: 70%; left: 39%; background: #1d2b33; border: .3cqw solid #555; }
+  .shop .win { position: absolute; bottom: 25%; width: 25%; height: 45%; background: linear-gradient(135deg, #8fb3c9, #3a5566); }
+  .neon { position: absolute; font-family: 'Playfair Display', serif; font-weight: 800; color: #ff5fd2; text-shadow: 0 0 6px #ff5fd2, 0 0 18px #ff5fd2, 0 0 40px #ff2bb8; animation: neon 2.2s infinite; }
+  @keyframes neon { 0%,18%,22%,60%,64%,100% { opacity: 1; } 20%,62% { opacity: .3; } }
+  .car { position: absolute; bottom: 14%; width: 16cqw; height: 4.5cqw; }
+  .car .body { position: absolute; bottom: 1cqw; left: 0; right: 0; height: 2.4cqw; background: #7a1d1d; border-radius: .6cqw 1.6cqw .4cqw .4cqw; }
+  .car .top { position: absolute; bottom: 3.2cqw; left: 25%; width: 45%; height: 1.6cqw; background: #5b1515; border-radius: 1cqw 1cqw 0 0; }
+  .car .w { position: absolute; bottom: 0; width: 2.4cqw; height: 2.4cqw; border-radius: 50%; background: #111; border: .5cqw solid #444; }
+
+  /* the pitch: split desk */
+  .office { background: linear-gradient(180deg, #3d3423 0%, #2a2418 60%, #171410 100%); }
+  .blinds { position: absolute; top: 8%; right: 6%; width: 28%; height: 50%; background: repeating-linear-gradient(180deg, #e9d9a8 0 .7cqw, #6d5a33 .7cqw 1cqw); opacity: .55; box-shadow: 0 0 6cqw #f5d58a55; }
+  .stockchip { position: absolute; padding: .4cqw 1cqw; border: 1px solid var(--green); color: var(--green); font-size: 1.3cqw; background: #000c; opacity: 0; animation: chipUp 3s forwards; }
+  @keyframes chipUp { 0% { opacity: 0; transform: translateY(2cqw); } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-4cqw); } }
+
+  /* rise */
+  .rise { background: radial-gradient(ellipse at 50% 120%, #4a3910 0%, #140f05 60%, #050402 100%); }
+  .bill { position: absolute; top: -6cqw; width: 4.6cqw; height: 2cqw; background: linear-gradient(90deg, #6f9461, #a8c79a 50%, #6f9461); border: .15cqw solid #3e5a35; border-radius: .2cqw; will-change: transform; }
+  .bill::after { content: '$'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.2cqw; color: #2b4424; font-weight: 600; }
+  .counter { position: absolute; top: 12%; width: 100%; text-align: center; font-family: 'Playfair Display'; font-weight: 800; font-size: 7cqw; color: var(--gold); text-shadow: 0 0 30px #e8c46a66; }
+  .counter small { display: block; font-family: 'Oswald'; font-weight: 400; font-size: 1.3cqw; letter-spacing: .5em; color: var(--paper); opacity: .7; }
+  .yacht { position: absolute; bottom: 10%; left: -30%; width: 28cqw; animation: sail 18s 2s linear forwards; }
+  @keyframes sail { to { left: 110%; } }
+  .heli { position: absolute; top: 40%; right: -20%; width: 12cqw; animation: heli 12s 6s linear forwards; }
+  @keyframes heli { 0% { right: -20%; top: 40%; } 100% { right: 120%; top: 28%; } }
+  .rotor { transform-origin: 50% 50%; animation: rotor .12s linear infinite; }
+  @keyframes rotor { from { transform: scaleX(1); } 50% { transform: scaleX(.1); } to { transform: scaleX(1); } }
+  .party { position: absolute; inset: 0; background: conic-gradient(from 0deg at 50% 0%, #ff00aa22, #00ffd522, #ffe60022, #ff00aa22); animation: spin 6s linear infinite; mix-blend-mode: screen; opacity: .6; }
+  @keyframes spin { to { filter: hue-rotate(360deg); } }
+
+  /* feds */
+  .feds { background: linear-gradient(180deg, #05070d 0%, #0d1220 100%); }
+  .siren { position: absolute; inset: 0; animation: siren 1s steps(1) infinite; mix-blend-mode: screen; }
+  @keyframes siren { 0% { background: radial-gradient(ellipse at 15% 30%, #ff2a2a55, transparent 50%); } 50% { background: radial-gradient(ellipse at 85% 30%, #2a5bff55, transparent 50%); } }
+  .agent { position: absolute; bottom: 14%; width: 5cqw; height: 15cqw; background: #000; border-radius: 2.5cqw 2.5cqw .3cqw .3cqw; opacity: 0; animation: agentIn 2.5s forwards; }
+  .agent::before { content: ''; position: absolute; top: -3.4cqw; left: 50%; width: 3cqw; height: 3.4cqw; margin-left: -1.5cqw; background: #000; border-radius: 50%; }
+  .agent::after { content: 'FBI'; position: absolute; top: 3cqw; left: 0; right: 0; text-align: center; font-family: 'Oswald'; font-weight: 600; font-size: 1.3cqw; color: #f5d34a; letter-spacing: .1em; }
+  @keyframes agentIn { from { opacity: 0; transform: translateY(2cqw); } to { opacity: 1; transform: none; } }
+  .doc { position: absolute; left: 50%; top: 50%; width: 30cqw; padding: 2cqw; margin-left: -15cqw; margin-top: -11cqw; background: var(--paper); color: #111; font-family: 'IBM Plex Mono'; font-size: 1.15cqw; line-height: 1.5; transform: rotate(-3deg) scale(.7); opacity: 0; animation: docIn 1.6s 5s cubic-bezier(.2,.8,.2,1.2) forwards; box-shadow: 0 2cqw 4cqw #000; }
+  .doc h3 { font-family: 'Oswald'; font-size: 1.8cqw; letter-spacing: .1em; border-bottom: 2px solid #111; margin-bottom: 1cqw; }
+  .doc .stamp { position: absolute; right: 1.5cqw; bottom: 1.2cqw; border: .3cqw solid #b31b1b; color: #b31b1b; font-family: 'Oswald'; font-weight: 600; font-size: 2.6cqw; padding: 0 1cqw; transform: rotate(-14deg) scale(3); opacity: 0; animation: stamp .4s 8s forwards; }
+  @keyframes docIn { to { opacity: 1; transform: rotate(-3deg) scale(1); } }
+  @keyframes stamp { to { opacity: .9; transform: rotate(-14deg) scale(1); } }
+
+  /* court */
+  .court { background: linear-gradient(180deg, #2b1b10 0%, #4a2e18 55%, #1b120a 100%); }
+  .bench { position: absolute; bottom: 0; left: 20%; right: 20%; height: 40%; background: linear-gradient(180deg, #6a4323, #3a2413); border-top: .6cqw solid #8b5a2f; }
+  .seal { position: absolute; top: 10%; left: 50%; width: 12cqw; height: 12cqw; margin-left: -6cqw; border-radius: 50%; border: .5cqw double var(--gold); display: grid; place-items: center; font-family: 'Playfair Display'; color: var(--gold); font-size: 1.1cqw; text-align: center; opacity: .7; }
+  .gavel { position: absolute; bottom: 38%; left: 58%; width: 10cqw; height: 10cqw; transform-origin: 85% 85%; animation: gavel 1.1s 3s 3 ease-in; }
+  @keyframes gavel { 0% { transform: rotate(0); } 40% { transform: rotate(-35deg); } 55% { transform: rotate(8deg); } 100% { transform: rotate(0); } }
+  .sentence { position: absolute; top: 46%; width: 100%; text-align: center; font-family: 'Oswald'; letter-spacing: .4em; font-size: 2cqw; color: var(--paper); opacity: 0; animation: fadeIn 1s 6.5s forwards; }
+
+  /* epilogue */
+  .seminar { background: radial-gradient(ellipse at 50% 10%, #3b3b52 0%, #0c0c14 60%); }
+  .spot { position: absolute; top: -10%; left: 50%; width: 40cqw; height: 120%; margin-left: -20cqw; background: linear-gradient(180deg, #fff6, transparent 80%); clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%); opacity: .35; }
+  .crowd { position: absolute; bottom: 0; left: 0; right: 0; height: 22%; display: flex; justify-content: space-around; align-items: flex-end; }
+  .crowd span { width: 4cqw; height: 5cqw; background: #000; border-radius: 2cqw 2cqw 0 0; position: relative; }
+  .crowd span::before { content: ''; position: absolute; top: -2.4cqw; left: 50%; width: 2.6cqw; height: 2.6cqw; margin-left: -1.3cqw; background: #000; border-radius: 50%; }
+  .banner { position: absolute; top: 8%; left: 50%; transform: translateX(-50%); padding: .8cqw 3cqw; border: 2px solid var(--gold); font-family: 'Oswald'; letter-spacing: .3em; font-size: 1.6cqw; color: var(--gold); white-space: nowrap; }
+
+  /* credits */
+  .credits { background: #000; }
+  .roll { position: absolute; left: 0; right: 0; top: 100%; text-align: center; animation: roll 26s linear forwards; }
+  @keyframes roll { to { transform: translateY(-260%); } }
+  .roll h2 { font-family: 'Playfair Display'; font-weight: 800; font-size: 4cqw; color: var(--gold); margin-bottom: 3cqw; }
+  .roll dl { font-size: 1.3cqw; line-height: 1.9; }
+  .roll dt { font-family: 'Oswald'; letter-spacing: .3em; color: #9a9a9a; font-size: .8em; text-transform: uppercase; margin-top: 1.6cqw; }
+  .roll p { margin-top: 4cqw; font-size: 1cqw; opacity: .6; padding: 0 20%; line-height: 1.7; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← NautilusOS</a>
+<div class="theater">
+  <div class="screen" id="screen">
+    <div class="stage" id="stage"></div>
+    <div class="subs" id="subs"></div>
+    <div class="flicker"></div>
+    <div class="grain"></div>
+    <div class="vignette"></div>
+    <div class="overlay-start" id="start">
+      <p>A NautilusOS Picture</p>
+      <h1>The Bull of<br>Broad Street</h1>
+      <div class="play"></div>
+      <p style="font-size:1cqw;letter-spacing:.3em">Click to roll film · Sound on</p>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="playBtn">❚❚ Pause</button>
+    <div class="timeline" id="timeline"></div>
+    <span class="clock" id="clock">0:00 / 0:00</span>
+    <button id="soundBtn" class="on">♪ Score</button>
+    <button id="voiceBtn">🎙 Narrator</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   THE BULL OF BROAD STREET
+   An original short satire about the rise and fall of a
+   1980s–90s penny-stock broker. All characters fictional.
+   ========================================================= */
+
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const rand = (a, b) => a + Math.random() * (b - a);
+
+const stage = $('#stage');
+const subs = $('#subs');
+
+// Helpers for scene building
+function guy(x, y, opts = {}) {
+  const g = el('div', 'guy ' + (opts.cls || ''));
+  g.style.left = x + '%'; g.style.bottom = y + '%';
+  if (opts.scale) g.style.transform = `scale(${opts.scale})`;
+  g.innerHTML = '<div class="b"></div><div class="h"></div><div class="hair"></div>';
+  if (opts.anim) { const w = el('div', opts.anim); w.style.cssText = 'position:absolute;inset:0;animation-delay:' + rand(0, .6) + 's'; while (g.firstChild) w.appendChild(g.firstChild); g.appendChild(w); }
+  return g;
+}
+const STOCKS = [['NUTL', '+2.4'], ['BRDS', '+0.8'], ['KSTL', '-1.1'], ['MRLW', '+5.6'], ['GLDN', '+0.3'], ['PIKE', '-0.7'], ['DOLR', '+3.2'], ['SHRK', '+1.9'], ['HYPE', '+12.0'], ['BOAT', '-2.2'], ['OYST', '+0.4'], ['FROG', '+7.7']];
+function tickerHTML(allDown) {
+  return STOCKS.concat(STOCKS).map(([s, c]) => {
+    const dn = allDown || c.startsWith('-');
+    const v = allDown ? '-' + (rand(8, 30)).toFixed(1) : c;
+    return `<span class="${dn ? 'dn' : 'up'}">${s} ${dn ? '▼' : '▲'}${v}</span>&nbsp;&nbsp;&nbsp;&nbsp;`;
+  }).join('');
+}
+
+/* ------------------- SCENES ------------------- */
+const scenes = [
+  {
+    name: 'Title', dur: 11, mood: 'intro',
+    build(s) {
+      s.style.background = 'radial-gradient(ellipse at center, #1a1206 0%, #000 70%)';
+      const c = el('div', 'card');
+      c.innerHTML = `<div class="presents">NAUTILUS PICTURES PRESENTS</div>
+        <div class="title-main">THE BULL OF<br>BROAD STREET</div>
+        <div class="title-sub">A true story that isn't</div>`;
+      c.insertAdjacentHTML('beforeend', `<svg class="bull" viewBox="0 0 200 110"><path fill="#e8c46a" d="M20 60c0-12 14-22 30-24l8-14c-8-2-16-8-18-16 10 6 20 8 28 8l10-2c10-2 22-2 32 0l10 2c8 0 18-2 28-8-2 8-10 14-18 16l8 14c18 4 30 14 30 28 0 6-4 10-10 10h-6l-4 26h-12l-2-22h-60l-4 22h-12l-2-24c-14-2-24-8-28-16z" opacity=".9"/></svg>`);
+      s.appendChild(c);
+    },
+    lines: []
+  },
+  {
+    name: 'Arrival', dur: 16, mood: 'dawn',
+    build(s) {
+      s.className = 'stage sky';
+      s.appendChild(el('div', 'sun'));
+      const city = el('div', 'city');
+      for (let i = 0; i < 34; i++) {
+        const b = el('div', 'bldg');
+        const w = rand(2.2, 5.5), h = rand(25, i > 12 && i < 20 ? 98 : 75);
+        b.style.width = w + 'cqw'; b.style.height = h + '%';
+        for (let j = 0; j < 8; j++) {
+          const win = el('i');
+          win.style.left = rand(10, 80) + '%'; win.style.top = rand(5, 90) + '%';
+          win.style.animationDelay = rand(0, 4) + 's';
+          b.appendChild(win);
+        }
+        city.appendChild(b);
+      }
+      s.appendChild(city);
+      s.appendChild(el('div', 'water'));
+      s.appendChild(el('div', 'train', '<div></div><div></div><div></div><div></div>'));
+      s.appendChild(el('div', 'caption', 'New York City · 1987'));
+    },
+    lines: [
+      [1, 'Vince', 'My name is Vince Marlowe. I was twenty-two, with a borrowed suit and a borrowed dream.', 'narr'],
+      [6.5, 'Vince', 'Every morning the 6:12 from Queens carried a few hundred people into Manhattan who wanted to be rich.', 'narr'],
+      [11.5, 'Vince', 'Most of them wanted it quietly. I wanted it loud.', 'narr'],
+    ]
+  },
+  {
+    name: 'The Floor', dur: 20, mood: 'floor',
+    build(s) {
+      s.className = 'stage floor';
+      const board = el('div', 'board');
+      STOCKS.forEach(([n, c]) => board.appendChild(el('div', c.startsWith('-') ? 'dn' : '', `<span>${n}</span><span>${c}</span>`)));
+      s.appendChild(board);
+      const desks = el('div', 'desks');
+      for (let row = 0; row < 3; row++) {
+        const y = 8 + row * 30;
+        const d = el('div', 'desk'); d.style.left = (6 - row * 2) + '%'; d.style.right = (6 - row * 2) + '%'; d.style.bottom = y + '%';
+        desks.appendChild(d);
+        for (let k = 0; k < 7; k++) {
+          const x = 9 + k * 12.5 + (row % 2) * 5;
+          const crt = el('div', 'crt'); crt.style.left = x + '%'; crt.style.bottom = (y + 6) + '%';
+          crt.style.animationDelay = rand(0, 1) + 's';
+          desks.appendChild(crt);
+          desks.appendChild(guy(x + 4.5, y + 4, { anim: Math.random() > .5 ? 'shout' : 'bob' }));
+        }
+      }
+      s.appendChild(desks);
+      const hero = guy(46, 4, { cls: 'hero', scale: 1.8 });
+      s.appendChild(hero);
+      const boss = guy(60, 4, { cls: 'gold', scale: 2, anim: 'bob' });
+      s.appendChild(boss);
+      ['RING!', 'RING!', 'BUY!', 'SELL!', 'RING!'].forEach((t, i) => {
+        const r = el('div', 'phone-ring', t); r.style.left = rand(5, 90) + '%'; r.style.top = rand(35, 60) + '%'; r.style.animationDelay = i * .1 + 's';
+        s.appendChild(r);
+      });
+      const tk = el('div', 'ticker', `<div class="track">${tickerHTML()}</div>`); tk.style.top = '31%';
+      s.appendChild(tk);
+      s.appendChild(el('div', 'caption', 'Rothmere & Vane · 40 Broad Street'));
+    },
+    lines: [
+      [0.8, 'Vince', 'Rothmere & Vane. Forty-one floors of carpet, cologne and pure noise.', 'narr'],
+      [5, 'Augie Vane', 'Kid. Rule one: the client buys a feeling. The stock is just the receipt.'],
+      [10, 'Augie Vane', 'Rule two: lunch is for people who already made their number. Did you make your number?'],
+      [14.5, 'Vince', 'I hadn\'t. But I was learning the language — and I was fluent by Friday.', 'narr'],
+    ]
+  },
+  {
+    name: 'Black Monday', dur: 15, mood: 'crash',
+    build(s) {
+      s.className = 'stage crash';
+      const wrap = el('div', 'fill-abs shake');
+      let d = 'M0 220 ';
+      const pts = [];
+      for (let i = 1; i <= 60; i++) {
+        const x = i * 16;
+        const y = i < 32 ? 220 - i * 4 + rand(-12, 12) : 92 + (i - 32) * 13 + rand(-6, 10);
+        pts.push(`L${x} ${y.toFixed(1)}`);
+      }
+      d += pts.join(' ');
+      wrap.innerHTML = `<svg viewBox="0 0 960 520" preserveAspectRatio="none">
+        <g stroke="#1b1b1b">${Array.from({ length: 10 }, (_, i) => `<line x1="0" x2="960" y1="${i * 52}" y2="${i * 52}"/>`).join('')}</g>
+        <path class="line" d="${d}"/></svg>
+        <div class="bigdate"><small>MONDAY · OCTOBER 19</small><b>−22.6%</b><small>THE DOW · ONE DAY</small></div>`;
+      s.appendChild(wrap);
+      s.appendChild(el('div', 'redflash'));
+      const tk = el('div', 'ticker', `<div class="track" style="animation-duration:9s">${tickerHTML(true)}</div>`); tk.style.bottom = '4%';
+      s.appendChild(tk);
+    },
+    lines: [
+      [1, 'Vince', 'My first day as a licensed broker was a Monday.', 'narr'],
+      [5.5, 'Vince', 'By lunch, the market had dropped like a piano off a roof.', 'narr'],
+      [10, 'Vince', 'By Friday, Rothmere & Vane didn\'t exist. Neither did my paycheck.', 'narr'],
+    ]
+  },
+  {
+    name: 'The Garage', dur: 16, mood: 'hustle',
+    build(s) {
+      s.className = 'stage mall';
+      [[4, 28], [34, 30], [66, 30]].forEach(([l, w], i) => {
+        const sh = el('div', 'shop'); sh.style.left = l + '%'; sh.style.width = w + '%';
+        sh.innerHTML = '<div class="door"></div><div class="win" style="left:6%"></div><div class="win" style="right:6%"></div>';
+        s.appendChild(sh);
+      });
+      const n1 = el('div', 'neon', 'Marlowe & Pike'); n1.style.cssText += 'left:38%;bottom:68%;font-size:2.6cqw;';
+      const n2 = el('div', 'neon', 'NAILS'); n2.style.cssText += 'left:12%;bottom:68%;font-size:1.8cqw;color:#5fe8ff;text-shadow:0 0 6px #5fe8ff,0 0 18px #5fe8ff;';
+      const n3 = el('div', 'neon', 'DONUTS 24H'); n3.style.cssText += 'left:72%;bottom:68%;font-size:1.8cqw;color:#ffd85f;text-shadow:0 0 6px #ffd85f,0 0 18px #ffb000;animation-delay:.7s';
+      s.append(n1, n2, n3);
+      const car = el('div', 'car', '<div class="top"></div><div class="body"></div><div class="w" style="left:12%"></div><div class="w" style="right:12%"></div>');
+      car.style.left = '8%';
+      s.appendChild(car);
+      s.appendChild(guy(30, 14, { cls: 'hero', scale: 1.6 }));
+      s.appendChild(guy(36, 14, { scale: 1.5, anim: 'bob' }));
+      s.appendChild(el('div', 'caption', 'Long Island · 1988'));
+    },
+    lines: [
+      [0.8, 'Vince', 'So I found a strip mall between a nail salon and a donut shop. Rent was cheap. Ambition was free.', 'narr'],
+      [6.5, 'Lenny Pike', 'Vinnie, these stocks cost a dime. Who\'s gonna buy a stock that costs a dime?'],
+      [11, 'Vince', 'Nobody buys a dime, Lenny. They buy what the dime might become.'],
+    ]
+  },
+  {
+    name: 'The Pitch', dur: 18, mood: 'hustle',
+    build(s) {
+      s.className = 'stage office';
+      s.appendChild(el('div', 'blinds'));
+      const d = el('div', 'desk'); d.style.cssText = 'left:20%;right:20%;bottom:0;height:22%;'; s.appendChild(d);
+      s.appendChild(guy(46, 22, { cls: 'hero', scale: 2.6, anim: 'shout' }));
+      const phone = el('div', '', '☎'); phone.style.cssText = 'position:absolute;left:38%;bottom:22%;font-size:4cqw;color:#c0262c;'; s.appendChild(phone);
+      const chips = ['HYPE ▲ +40%', 'FROG ▲ +110%', 'SHRK ▲ +65%', 'DOLR ▲ +220%', 'BOAT ▲ +80%', 'MOON ▲ +500%'];
+      chips.forEach((c, i) => {
+        const ch = el('div', 'stockchip', c);
+        ch.style.left = rand(8, 78) + '%'; ch.style.top = rand(10, 55) + '%'; ch.style.animationDelay = (1 + i * 2.4) + 's';
+        s.appendChild(ch);
+      });
+      s.appendChild(el('div', 'caption', 'The Script'));
+    },
+    lines: [
+      [0.6, 'Vince', 'I wrote a script. Twelve pages. Every objection a man could raise, I had an answer waiting for it.', 'narr'],
+      [6, 'Vince', '"Mr. Dobbs, I\'m not calling to sell you anything. I\'m calling because I\'d hate for you to miss this."'],
+      [11.5, 'Vince', 'Was I lying? I preferred the word "forecasting." Then I taught forty kids to forecast exactly like me.', 'narr'],
+    ]
+  },
+  {
+    name: 'The Rise', dur: 20, mood: 'party',
+    build(s, ctx) {
+      s.className = 'stage rise';
+      s.appendChild(el('div', 'party'));
+      const counter = el('div', 'counter', '$0<small>Commissions · Year One</small>');
+      s.appendChild(counter);
+      s.insertAdjacentHTML('beforeend', `
+        <svg class="yacht" viewBox="0 0 300 90"><path d="M10 60h270l-30 26H40z" fill="#f3ead7"/><path d="M70 60V32h120l30 28z" fill="#ddd2b8"/><path d="M100 32V16h70l14 16z" fill="#c9bea4"/><g fill="#1b2236"><rect x="90" y="40" width="16" height="8"/><rect x="114" y="40" width="16" height="8"/><rect x="138" y="40" width="16" height="8"/><rect x="162" y="40" width="16" height="8"/></g><text x="200" y="76" font-family="Playfair Display" font-size="12" fill="#1b2236">THE DIME</text></svg>
+        <svg class="heli" viewBox="0 0 120 60"><rect class="rotor" x="10" y="4" width="90" height="3" fill="#ddd"/><rect x="52" y="6" width="4" height="8" fill="#999"/><ellipse cx="55" cy="26" rx="26" ry="13" fill="#e8c46a"/><rect x="70" y="22" width="44" height="5" fill="#e8c46a"/><path d="M38 38h40" stroke="#999" stroke-width="3"/></svg>`);
+      ctx.bills = [];
+      for (let i = 0; i < 60; i++) {
+        const b = el('div', 'bill');
+        const o = { e: b, x: rand(0, 100), y: rand(-120, -5), vy: rand(4, 10), r: rand(0, 360), vr: rand(-120, 120), sway: rand(0, 6.28) };
+        b.style.left = o.x + '%';
+        s.appendChild(b); ctx.bills.push(o);
+      }
+      ctx.counter = counter;
+    },
+    tick(ctx, t, dt) {
+      const sh = stage.clientHeight;
+      ctx.bills.forEach(o => {
+        o.y += o.vy * dt; o.r += o.vr * dt; o.sway += dt * 2;
+        if (o.y > 105) o.y = rand(-20, -5);
+        o.e.style.transform = `translate(${Math.sin(o.sway) * 20}px, ${o.y / 100 * sh}px) rotate(${o.r}deg)`;
+      });
+      const amt = Math.min(1, t / 16) ** 2.2 * 49_000_000;
+      ctx.counter.innerHTML = '$' + Math.floor(amt).toLocaleString() + `<small>Commissions · Year ${Math.min(5, 1 + Math.floor(t / 4))}</small>`;
+    },
+    lines: [
+      [0.8, 'Vince', 'Year one, we made more money than the donut shop. Year two, we bought the donut shop.', 'narr'],
+      [6, 'Vince', 'By year three I owned a boat named after a ten-cent coin, and a helicopter I couldn\'t legally fly.', 'narr'],
+      [12, 'Lenny Pike', 'Vinnie! Somebody put a goldfish in the champagne fountain again!'],
+      [15.5, 'Vince', 'Money doesn\'t change you. It just turns the volume up on whoever you already were.', 'narr'],
+    ]
+  },
+  {
+    name: 'The Feds', dur: 17, mood: 'tension',
+    build(s) {
+      s.className = 'stage feds';
+      s.appendChild(el('div', 'siren'));
+      [30, 44, 58].forEach((x, i) => { const a = el('div', 'agent'); a.style.left = x + '%'; a.style.animationDelay = (.6 + i * .8) + 's'; s.appendChild(a); });
+      s.insertAdjacentHTML('beforeend', `<div class="doc"><h3>UNITED STATES v. MARLOWE</h3>
+        Count 1 — Securities fraud<br>Count 2 — Market manipulation<br>Count 3 — Wire fraud<br>Count 4 — One (1) helicopter, unlicensed<br><span class="stamp">INDICTED</span></div>`);
+      s.appendChild(el('div', 'caption', 'Agent Ruth Okafor · FBI'));
+    },
+    lines: [
+      [1, 'Vince', 'Agent Ruth Okafor rode the subway to work. That should have told me everything.', 'narr'],
+      [6, 'Agent Okafor', 'Mr. Marlowe, you didn\'t sell stocks. You sold the stock to your friends, then sold your friends.'],
+      [11.5, 'Vince', 'I said, "Agent Okafor, I think we can work something out." She said, "We already did."'],
+    ]
+  },
+  {
+    name: 'The Fall', dur: 14, mood: 'fall',
+    build(s) {
+      s.className = 'stage court';
+      s.appendChild(el('div', 'seal', 'UNITED STATES<br>DISTRICT COURT<br>· E.D.N.Y. ·'));
+      s.appendChild(el('div', 'bench'));
+      s.insertAdjacentHTML('beforeend', `<svg class="gavel" viewBox="0 0 100 100"><rect x="10" y="20" width="40" height="22" rx="4" fill="#5a3418" stroke="#2a170a" stroke-width="2"/><rect x="40" y="28" width="52" height="6" rx="2" fill="#7a4a24" transform="rotate(40 40 31)"/></svg>`);
+      s.appendChild(el('div', 'sentence', 'Thirty-six months · Restitution: $110,000,000'));
+    },
+    lines: [
+      [1, 'Vince', 'Three years. Lenny got eighteen months — and kept the donut shop.', 'narr'],
+      [7.5, 'Vince', 'The investors? A lot of them never got back what they gave me. That part isn\'t funny. I tried to make it funny for a long time.', 'narr'],
+    ]
+  },
+  {
+    name: 'Epilogue', dur: 14, mood: 'dawn',
+    build(s) {
+      s.className = 'stage seminar';
+      s.appendChild(el('div', 'spot'));
+      s.appendChild(el('div', 'banner', 'ETHICS IN PERSUASION · A SEMINAR'));
+      s.appendChild(guy(48.5, 24, { cls: 'hero', scale: 2.4 }));
+      const crowd = el('div', 'crowd'); for (let i = 0; i < 16; i++) crowd.appendChild(el('span')); s.appendChild(crowd);
+      s.appendChild(el('div', 'caption', 'Twelve years later'));
+    },
+    lines: [
+      [1, 'Vince', 'These days I teach people how to spot a guy like me.', 'narr'],
+      [5.5, 'Vince', 'First lesson: if a stranger on the phone is more excited about your money than you are — hang up.', 'narr'],
+      [10.5, 'Vince', 'The ticker never stops. But you can always stop listening.', 'narr'],
+    ]
+  },
+  {
+    name: 'Credits', dur: 26, mood: 'intro',
+    build(s) {
+      s.className = 'stage credits';
+      s.appendChild(el('div', 'roll', `
+        <h2>The Bull of Broad Street</h2>
+        <dl>
+          <dt>Starring</dt><dd>Vince Marlowe as Himself (fictional)</dd>
+          <dd>Lenny Pike as His Worst Idea</dd>
+          <dd>Augie Vane as The Lunch Rule</dd>
+          <dd>Agent Ruth Okafor as The Subway</dd>
+          <dt>Featuring</dt><dd>The Dime (a yacht) · One Helicopter · A Goldfish</dd>
+          <dt>Written, Animated &amp; Scored by</dt><dd>NautilusOS, in HTML, CSS &amp; JavaScript</dd>
+          <dt>No goldfish were harmed</dt><dd>Several fountains were.</dd>
+        </dl>
+        <p>This is an original work of fiction inspired by the Wall Street rise-and-fall genre. Any resemblance to actual brokers, firms or helicopters is coincidental. Securities fraud harms real people. If an offer sounds too good to be true, check it at investor.gov.</p>`));
+    },
+    lines: []
+  },
+];
+
+/* ------------------- SCORE (Web Audio) ------------------- */
+const Score = {
+  ctx: null, master: null, on: true, nextT: 0, step: 0, mood: 'intro',
+  moods: {
+    intro:   { bpm: 76,  root: 45, scale: [0, 3, 7, 10], bass: [0, null, 7, null], hat: false, lead: 0.4 },
+    dawn:    { bpm: 92,  root: 48, scale: [0, 4, 7, 11, 14], bass: [0, null, 7, 4], hat: true, lead: 0.5 },
+    floor:   { bpm: 128, root: 43, scale: [0, 3, 5, 7, 10], bass: [0, 0, 12, 0, 10, 0, 7, 5], hat: true, lead: 0.7 },
+    crash:   { bpm: 70,  root: 40, scale: [0, 1, 6, 7], bass: [0, null, null, -1], hat: false, lead: 0.3, detune: true },
+    hustle:  { bpm: 112, root: 45, scale: [0, 3, 5, 7, 10, 12], bass: [0, null, 0, 3, null, 5, 7, null], hat: true, lead: 0.6 },
+    party:   { bpm: 124, root: 47, scale: [0, 4, 7, 9, 12, 16], bass: [0, 12, 0, 12, 5, 17, 7, 19], hat: true, lead: 0.9 },
+    tension: { bpm: 96,  root: 41, scale: [0, 1, 5, 6], bass: [0, null, 0, null, 1, null, 0, 6], hat: true, lead: 0.25 },
+    fall:    { bpm: 60,  root: 38, scale: [0, 3, 7, 8], bass: [0, null, null, null, -4, null, null, null], hat: false, lead: 0.35 },
+  },
+  init() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.master = this.ctx.createGain(); this.master.gain.value = .22;
+    const comp = this.ctx.createDynamicsCompressor();
+    this.master.connect(comp); comp.connect(this.ctx.destination);
+    this.nextT = this.ctx.currentTime + .1;
+  },
+  freq: m => 440 * Math.pow(2, (m - 69) / 12),
+  tone(m, t, len, type, vol) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type; o.frequency.value = this.freq(m);
+    if (this.moods[this.mood].detune) o.detune.value = rand(-25, 25);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + len);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + len + .05);
+  },
+  hat(t, vol) {
+    const len = .05, buf = this.ctx.createBuffer(1, this.ctx.sampleRate * len, this.ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    src.buffer = buf; f.type = 'highpass'; f.frequency.value = 7000; g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(this.master); src.start(t);
+  },
+  schedule(playing) {
+    if (!this.ctx) return;
+    if (!playing || !this.on) { this.nextT = this.ctx.currentTime + .05; return; }
+    const m = this.moods[this.mood];
+    const stepDur = 60 / m.bpm / 2;
+    while (this.nextT < this.ctx.currentTime + .2) {
+      const t = this.nextT, i = this.step;
+      const b = m.bass[i % m.bass.length];
+      if (b !== null) this.tone(m.root + b, t, stepDur * 1.6, 'triangle', .55);
+      if (m.hat && i % 2 === 1) this.hat(t, .18);
+      if (i % 8 === 0) m.scale.slice(0, 3).forEach(n => this.tone(m.root + 12 + n, t, stepDur * 7, 'sine', .08));
+      if (Math.random() < m.lead * .5) this.tone(m.root + 24 + m.scale[Math.floor(Math.random() * m.scale.length)], t, stepDur * 1.2, 'square', .035);
+      this.nextT += stepDur; this.step++;
+    }
+  }
+};
+
+/* ------------------- ENGINE ------------------- */
+const total = scenes.reduce((a, s) => a + s.dur, 0);
+const starts = []; scenes.reduce((a, s, i) => (starts[i] = a, a + s.dur), 0);
+let time = 0, playing = false, current = -1, ctx = {}, lineIdx = -1, last = 0, voiceOn = false;
+
+const timeline = $('#timeline');
+scenes.forEach((sc, i) => {
+  const c = el('div', 'chap', `<div class="fill"></div><span>${sc.name}</span>`);
+  c.style.flex = sc.dur;
+  c.onclick = () => seek(starts[i]);
+  timeline.appendChild(c);
+});
+const fills = [...timeline.querySelectorAll('.fill')];
+const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+function loadScene(i) {
+  current = i; ctx = {}; lineIdx = -1;
+  stage.innerHTML = ''; stage.className = 'stage'; stage.style.background = '';
+  scenes[i].build(stage, ctx);
+  if (!playing) stage.classList.add('paused');
+  Score.mood = scenes[i].mood;
+  subs.textContent = '';
+  speechSynthesis?.cancel();
+}
+
+function seek(t) {
+  time = Math.max(0, Math.min(total - .01, t));
+  const i = sceneAt(time);
+  loadScene(i);
+  // fast-forward CSS animations so they line up with the seek point
+  const off = time - starts[i];
+  stage.querySelectorAll('*').forEach(n => {
+    const cs = getComputedStyle(n);
+    if (cs.animationName && cs.animationName !== 'none') {
+      const delays = cs.animationDelay.split(',').map(d => parseFloat(d) - off + 's');
+      n.style.animationDelay = delays.join(',');
+    }
+  });
+  if (scenes[i].tick) scenes[i].tick(ctx, off, off > 0 ? 0 : 0);
+}
+const sceneAt = t => { for (let i = scenes.length - 1; i >= 0; i--) if (t >= starts[i]) return i; return 0; };
+
+function speak(text) {
+  if (!voiceOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.05; u.pitch = .9;
+  speechSynthesis.speak(u);
+}
+
+function updateSubs(local) {
+  const lines = scenes[current].lines;
+  let idx = -1;
+  for (let k = 0; k < lines.length; k++) if (local >= lines[k][0]) idx = k;
+  // hide a line after a while if there's a long gap
+  if (idx >= 0) {
+    const end = lines[idx + 1] ? lines[idx + 1][0] : scenes[current].dur - .6;
+    if (local > end) idx = -1;
+  }
+  if (idx !== lineIdx) {
+    lineIdx = idx;
+    if (idx < 0) { subs.innerHTML = ''; return; }
+    const [, who, text, kind] = lines[idx];
+    subs.className = 'subs' + (kind === 'narr' ? ' narr' : '');
+    subs.innerHTML = `<span class="who">${who}${kind === 'narr' ? ' (V.O.)' : ''}</span>${text}`;
+    speak(text);
+  }
+}
+
+function frame(now) {
+  const dt = Math.min(.1, (now - last) / 1000); last = now;
+  if (playing) {
+    time += dt;
+    if (time >= total) { time = total - .01; setPlaying(false); }
+    const i = sceneAt(time);
+    if (i !== current) loadScene(i);
+    const local = time - starts[current];
+    if (scenes[current].tick) scenes[current].tick(ctx, local, dt);
+    updateSubs(local);
+  }
+  Score.schedule(playing);
+  fills.forEach((f, i) => {
+    const p = Math.max(0, Math.min(1, (time - starts[i]) / scenes[i].dur));
+    f.style.width = p * 100 + '%';
+  });
+  $('#clock').textContent = fmt(time) + ' / ' + fmt(total);
+  requestAnimationFrame(frame);
+}
+
+function setPlaying(p) {
+  playing = p;
+  stage.classList.toggle('paused', !p);
+  $('#playBtn').textContent = p ? '❚❚ Pause' : '▶ Play';
+  if (!p) speechSynthesis?.pause(); else speechSynthesis?.resume();
+}
+
+$('#start').onclick = () => {
+  $('#start').remove();
+  Score.init();
+  if (time >= total - .1) seek(0);
+  if (current < 0) loadScene(0);
+  setPlaying(true);
+};
+$('#playBtn').onclick = () => {
+  if ($('#start')) return $('#start').click();
+  if (!playing && time >= total - .1) seek(0);
+  setPlaying(!playing);
+};
+$('#soundBtn').onclick = e => { Score.on = !Score.on; e.currentTarget.classList.toggle('on', Score.on); };
+$('#voiceBtn').onclick = e => {
+  voiceOn = !voiceOn; e.currentTarget.classList.toggle('on', voiceOn);
+  if (!voiceOn) speechSynthesis?.cancel();
+};
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); $('#playBtn').click(); }
+  if (e.code === 'ArrowRight') seek(time + 5);
+  if (e.code === 'ArrowLeft') seek(time - 5);
+});
+
+loadScene(0);
+requestAnimationFrame(t => { last = t; frame(t); });
+</script>
+</body>
+</html>
